@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using PerformanceEvaluationSystem.Data;
 using PerformanceEvaluationSystem.Dto;
+using System.Data.Entity;
 
 namespace PerformanceEvaluationSystem.Controllers
 {
@@ -23,9 +25,10 @@ namespace PerformanceEvaluationSystem.Controllers
         }
         [HttpGet]
         [Route("{id:guid}")]
-        public IActionResult GetById([FromRoute] Guid id)
+        public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var employee = dbcontext.Employees.FirstOrDefault(e => e.EmployeeId == id);
+            //Also using the async method to support multiple requests
+            var employee =await dbcontext.Employees.FirstOrDefaultAsync(e => e.EmployeeId == id);
             if (employee == null)
             {
                 return NotFound();
@@ -34,7 +37,7 @@ namespace PerformanceEvaluationSystem.Controllers
         }
         [HttpPost]
         [Route("create")]
-        public IActionResult Post([FromBody] EmployeeDtoPayload employeeDto)
+        public async Task<IActionResult> Post([FromBody] EmployeeDtoPayload employeeDto)
         {
             var payload= new Employee
             {
@@ -42,8 +45,8 @@ namespace PerformanceEvaluationSystem.Controllers
                 Position = employeeDto.Position,
                 TeamId = employeeDto.TeamId
             };
-            dbcontext.Employees.Add(payload);
-            dbcontext.SaveChanges();
+            dbcontext.Employees.AddAsync(payload);
+            await dbcontext.SaveChangesAsync();
             var response = new ResponseEmployee
             {
                 EmployeeId = payload.EmployeeId,
@@ -55,9 +58,9 @@ namespace PerformanceEvaluationSystem.Controllers
         }
         [HttpPut]
         [Route("{id:guid}")]
-        public IActionResult Put([FromRoute] Guid id, [FromBody] EmployeeDtoPayload employeeDto)
+        public async Task<IActionResult> Put([FromRoute] Guid id, [FromBody] EmployeeDtoPayload employeeDto)
         {
-            var existingEmployee = dbcontext.Employees.FirstOrDefault(e => e.EmployeeId == id);
+            var existingEmployee = await dbcontext.Employees.FirstOrDefaultAsync(e => e.EmployeeId == id);
             if (existingEmployee == null)
             {
                 return NotFound();
@@ -65,13 +68,13 @@ namespace PerformanceEvaluationSystem.Controllers
             existingEmployee.Name = employeeDto.Name;
             existingEmployee.Position = employeeDto.Position;
             existingEmployee.TeamId = employeeDto.TeamId;
-            dbcontext.SaveChanges();
+            await dbcontext.SaveChangesAsync();
            
             return NoContent();
         }
         [HttpDelete]
         [Route("{id:guid}")]
-        public IActionResult Delete([FromRoute] Guid id)
+        public async  Task<IActionResult> Delete([FromRoute] Guid id)
         {
             var existingEmployee = dbcontext.Employees.FirstOrDefault(e => e.EmployeeId == id);
             if (existingEmployee == null)
