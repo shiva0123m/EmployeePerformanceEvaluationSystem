@@ -1,96 +1,84 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using PerformanceEvaluationSystem.Data;
 using PerformanceEvaluationSystem.Dto;
-using System.Data.Entity;
+using PerformanceEvaluationSystem.Models;
 
 namespace PerformanceEvaluationSystem.Controllers
 {
-
     [ApiController]
     [Route("api/[controller]")] // Result: api/employee
     public class EmployeeController : ControllerBase
     {
-        private readonly PerformanceEvaluation dbcontext ;
-        
-        public EmployeeController(PerformanceEvaluation context)
+        private readonly IEmployeeRepository _repository;
+
+        public EmployeeController(IEmployeeRepository repository)
         {
-            dbcontext = context;
+            _repository = repository;
         }
+
+        /// <summary>
+        /// Get all employees
+        /// </summary>
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> GetAll()
         {
-            var employees = dbcontext.Employees.ToList();
+            var employees = await _repository.GetAllAsync();
             return Ok(employees);
         }
-        [HttpGet]
-        [Route("{id:guid}")]
-        public async Task<IActionResult> GetById([FromRoute] Guid id)
+
+        /// <summary>
+        /// Get employee by id
+        /// </summary>
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetById(Guid id)
         {
-            //Also using the async method to support multiple requests
-            var employee =await dbcontext.Employees.FirstOrDefaultAsync(e => e.EmployeeId == id);
+            var employee = await _repository.GetByIdAsync(id);
             if (employee == null)
-            {
                 return NotFound();
-            }
+
             return Ok(employee);
         }
-        [HttpPost]
-        [Route("create")]
-        public async Task<IActionResult> Post([FromBody] EmployeeDtoPayload employeeDto)
+
+        /// <summary>
+        /// Create a new employee
+        /// </summary>
+        [HttpPost("create")]
+        public async Task<IActionResult> Create([FromBody] EmployeeDtoPayload employeeDto)
         {
-            var payload= new Employee
-            {
-                Name = employeeDto.Name,
-                Position = employeeDto.Position,
-                TeamId = employeeDto.TeamId
-            };
-            dbcontext.Employees.AddAsync(payload);
-            await dbcontext.SaveChangesAsync();
-            var response = new ResponseEmployee
-            {
-                EmployeeId = payload.EmployeeId,
-                Name = payload.Name,
-                Position = payload.Position,
-                TeamId = payload.TeamId
-            };
-            return CreatedAtAction(nameof(GetById), new { id = response.EmployeeId }, response);
+            if (employeeDto == null)
+                return BadRequest("Invalid employee data.");
+
+            var createdEmployee = await _repository.AddAsync(employeeDto);
+
+            return CreatedAtAction(nameof(GetById), new { id = createdEmployee.EmployeeId }, createdEmployee);
         }
-        [HttpPut]
-        [Route("{id:guid}")]
-        public async Task<IActionResult> Put([FromRoute] Guid id, [FromBody] EmployeeDtoPayload employeeDto)
+
+        /// <summary>
+        /// Update an existing employee
+        /// </summary>
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] EmployeeDtoPayload employeeDto)
         {
-            var existingEmployee = await dbcontext.Employees.FirstOrDefaultAsync(e => e.EmployeeId == id);
-            if (existingEmployee == null)
-            {
+            if (employeeDto == null)
+                return BadRequest("Invalid employee data.");
+
+            var updated = await _repository.UpdateAsync(id, employeeDto);
+            if (!updated)
                 return NotFound();
-            }
-            existingEmployee.Name = employeeDto.Name;
-            existingEmployee.Position = employeeDto.Position;
-            existingEmployee.TeamId = employeeDto.TeamId;
-            await dbcontext.SaveChangesAsync();
-           
+
             return NoContent();
         }
-        [HttpDelete]
-        [Route("{id:guid}")]
-        public async  Task<IActionResult> Delete([FromRoute] Guid id)
+
+        /// <summary>
+        /// Delete an employee
+        /// </summary>
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var existingEmployee = dbcontext.Employees.FirstOrDefault(e => e.EmployeeId == id);
-            if (existingEmployee == null)
-            {
+            var deletedEmployee = await _repository.DeleteAsync(id);
+            if (deletedEmployee == null)
                 return NotFound();
-            }
-            dbcontext.Employees.Remove(existingEmployee);
-            var response = new ResponseEmployee
-            {
-                EmployeeId = existingEmployee.EmployeeId,
-                Name = existingEmployee.Name,
-                Position = existingEmployee.Position,
-                TeamId = existingEmployee.TeamId
-            };
-            dbcontext.SaveChanges();
-            return Ok(response);
+
+            return Ok(deletedEmployee);
         }
     }
 }
