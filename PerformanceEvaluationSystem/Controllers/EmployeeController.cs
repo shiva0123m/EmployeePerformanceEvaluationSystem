@@ -79,8 +79,15 @@ namespace PerformanceEvaluationSystem.Controllers
                 return NotFound();
             }
             dbcontext.Employees.Remove(existingEmployee);
+            var response = new ResponseEmployee
+            {
+                EmployeeId = existingEmployee.EmployeeId,
+                Name = existingEmployee.Name,
+                Position = existingEmployee.Position,
+                TeamId = existingEmployee.TeamId
+            };
             dbcontext.SaveChanges();
-            return NoContent();
+            return Ok(response);
         }
     }
 }
